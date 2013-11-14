@@ -1,0 +1,101 @@
+#!/bin/bash -e
+
+tmpdir=/tmp/tron
+njobs=4
+game=icosahedron
+count=1000
+
+declare -a players wins
+argc=0
+
+usage() {
+	echo "Usage: $0 [options] player1 [player2 ...]
+
+Options:
+    -c N, --count N          Number of games to do
+    -g GAME, --game GAME     Name of the game config to use
+    -j N, --jobs N           Number of jobs to spawn
+"
+	exit 0
+}
+
+while [ -n "$1" ]; do
+	case "$1" in
+		-c|--count) count=$2; shift 2 ;;
+		-g|--game) game=$2; shift 2 ;;
+		-j|--jobs) njobs=$2; shift 2 ;;
+		-h|--help)
+			usage
+			exit 0
+			;;
+		-*)
+			echo "Invalid option: $1" exit 1 ;;
+		*)
+			players[argc]=$1; argc=$(($argc+1)); shift ;;
+	esac
+done
+game_p=${game}.gam
+
+expected_argc=$(sed -n 's/^nb_players.*\([0-9]\+\)/\1/p' $game_p)
+if [ $argc -eq 0 ]; then
+	usage
+	exit 0
+elif [ ! $argc -eq $expected_argc ]; then
+	echo "$expected_argc players required, $argc provided"
+	exit 2
+fi
+
+i=0
+for p in ${players[@]}; do
+	ls AI${p}.o* &>/dev/null || { echo "No such user: $p"; exit 2; }
+	wins[$i]=0
+	i=$(($i+1))
+done
+ls $game_p &>/dev/null || { echo "No such game: $game"; exit 2; }
+
+[ -d $tmpdir ] || mkdir -p $tmpdir
+
+i_todo=$(( ($count/$njobs)+1 ))
+i_done=0
+for (( b=0; b<$i_todo; b++ )); do
+	echo -en "\r$i_done ($((($b*100)/$i_todo))%)"
+	for (( i=0; i<$njobs; i++ )); do
+		j=$(($i_done+$i))
+		[ $j -gt $count ] && break
+		tmpfile=$tmpdir/prob-${j}.t3d
+		./Game ${players[@]} -s $RANDOM < $game_p 2>/dev/null | grep '^score ' > $tmpfile &
+	done
+	wait
+	i_done=$(($i_done+$i))
+done
+
+echo -e "\r$(($i_done-1)) (100%)"
+echo "Ran $count $game games"
+
+max() {
+	imax=0
+	vmax=0
+	i=0
+	for v in $@; do
+		[ $v -gt $vmax ] && { imax=$i; vmax=$v; }
+		i=$(($i+1))
+	done
+	echo -n $imax
+}
+
+for (( i=1; i<=$count; i++ )); do
+	tmpfile=$tmpdir/prob-${i}.t3d
+	results=$(tail -n 1 $tmpfile)
+	results=${results#* }
+	winner=$(max $results)
+	wins[$winner]=$(( ${wins[$winner]} + 1 ))
+	echo -en "\r${wins[@]}"
+done
+echo
+
+i=0
+for c in ${wins[@]}; do
+	percent=$( bc -l <<< "scale=3; ($c*100) / $count" )
+	echo "${players[i]}: $percent"
+	i=$(($i+1))
+done
