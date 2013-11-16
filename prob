@@ -24,14 +24,9 @@ while [ -n "$1" ]; do
 		-c|--count) count=$2; shift 2 ;;
 		-g|--game) game=$2; shift 2 ;;
 		-j|--jobs) njobs=$2; shift 2 ;;
-		-h|--help)
-			usage
-			exit 0
-			;;
-		-*)
-			echo "Invalid option: $1" exit 1 ;;
-		*)
-			players[argc]=$1; argc=$(($argc+1)); shift ;;
+		-h|--help) usage; exit 0 ;;
+		-*) echo "Invalid option: $1"; exit 1 ;;
+		*) players[argc]=$1; argc=$(($argc+1)); shift ;;
 	esac
 done
 game_p=${game}.gam
