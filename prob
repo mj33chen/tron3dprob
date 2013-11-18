@@ -72,6 +72,7 @@ max() {
 	vmax=0
 	i=0
 	for v in $@; do
+		[ $v -eq $vmax ] && return
 		[ $v -gt $vmax ] && { imax=$i; vmax=$v; }
 		i=$(($i+1))
 	done
@@ -81,9 +82,11 @@ max() {
 for (( i=1; i<=$count; i++ )); do
 	tmpfile=$tmpdir/prob-${i}.t3d
 	results=$(tail -n 1 $tmpfile)
-	results=${results#* }
-	winner=$(max $results)
-	wins[$winner]=$(( ${wins[$winner]} + 1 ))
+	if [ -n "$results" ]; then
+		results=${results#* }
+		winner=$(max $results)
+		[ -n "$winner" ] && wins[$winner]=$(( ${wins[$winner]} + 1 ))
+	fi
 	echo -en "\r${wins[@]}"
 done
 echo
@@ -91,6 +94,6 @@ echo
 i=0
 for c in ${wins[@]}; do
 	percent=$( bc -l <<< "scale=3; ($c*100) / $count" )
-	echo "${players[i]}: $percent"
+	echo -e "${players[i]}:\t$percent"
 	i=$(($i+1))
 done
