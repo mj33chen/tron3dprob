@@ -1,6 +1,8 @@
 #!/bin/bash -e
 
 tmpfile=/tmp/tron.txt
+rotate=true
+
 njobs=4
 game=icosahedron
 count=1000
@@ -50,18 +52,26 @@ ls $game_p &>/dev/null || { echo "No such game: $game"; exit 2; }
 
 i_todo=$(( ($count/$njobs)+1 ))
 i_done=0
-n0=1
-n1=$nplayers
+if $rotate; then
+	n0=1
+	n1=$nplayers
+fi
 for (( b=0; b<$i_todo; b++ )); do
 	for (( i=0; i<$njobs; i++ )); do
 		j=$(($i_done+$i))
 		[ $j -ge $count ] && break
-		./Game ${players[@]:$n1} ${players[@]:0:$n1} -s $RANDOM < $game_p 2>/dev/null |\
-			grep '^score ' | tail -n 1 | (read -a result;\
-				echo ${result[@]:$n0} ${result[@]:1:$(($n0-1))} ) >> $tmpfile &
-		n0=$(($n0+1))
-		n1=$(($n1-1))
-		[ $n0 -gt $nplayers ] && { n0=1; n1=$nplayers; }
+		if $rotate; then
+			./Game ${players[@]:$n1} ${players[@]:0:$n1} -s $RANDOM < $game_p 2>/dev/null |\
+				grep '^score ' | tail -n 1 | (read -a result;\
+					echo ${result[@]:$n0} ${result[@]:1:$(($n0-1))} ) >> $tmpfile &
+			n0=$(($n0+1))
+			n1=$(($n1-1))
+			[ $n0 -gt $nplayers ] && { n0=1; n1=$nplayers; }
+		else
+			./Game ${players[@]} -s $RANDOM < $game_p 2>/dev/null |\
+				grep '^score ' | tail -n 1 | (read -a result;\
+					echo ${result[@]:1} ) >> $tmpfile &
+		fi
 	done
 	wait
 	i_done=$(($i_done+$i))
