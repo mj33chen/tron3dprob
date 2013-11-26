@@ -1,5 +1,6 @@
 #!/bin/bash -e
 
+tmpfile=/tmp/tron.txt
 njobs=4
 game=icosahedron
 count=1000
@@ -47,16 +48,17 @@ for p in ${players[@]}; do
 done
 ls $game_p &>/dev/null || { echo "No such game: $game"; exit 2; }
 
-declare -a results
+: > $tmpfile
+
 i_todo=$(( ($count/$njobs)+1 ))
 i_done=0
 for (( b=0; b<$i_todo; b++ )); do
-	echo -en "\r$i_done ($((($b*100)/$i_todo))%)"
 	for (( i=0; i<$njobs; i++ )); do
 		j=$(($i_done+$i))
 		[ $j -gt $count ] && break
-		results[$j]=$(./Game ${players[@]} -s $RANDOM < $game_p 2>/dev/null | grep '^score ' | tail -n 1)
+		./Game ${players[@]} -s $RANDOM < $game_p 2>/dev/null | grep '^score ' | tail -n 1 >> $tmpfile &
 	done
+	echo -en "\r$i_done ($((($b*100)/$i_todo))%)"
 	wait
 	i_done=$(($i_done+$i))
 done
@@ -76,15 +78,14 @@ max() {
 	echo -n $imax
 }
 
-for (( i=0; i<$count; i++ )); do
-	result=${results[$i]}
+while read result; do
 	if [ -n "$result" ]; then
 		result=${result#* }
 		winner=$(max $result)
 		[ -n "$winner" ] && wins[$winner]=$(( ${wins[$winner]} + 1 ))
 	fi
 	echo -en "\r${wins[@]}"
-done
+done < $tmpfile
 echo
 
 i=0
