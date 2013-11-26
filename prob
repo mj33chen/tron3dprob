@@ -1,6 +1,5 @@
 #!/bin/bash -e
 
-tmpdir=/tmp/tron
 njobs=4
 game=icosahedron
 count=1000
@@ -48,8 +47,7 @@ for p in ${players[@]}; do
 done
 ls $game_p &>/dev/null || { echo "No such game: $game"; exit 2; }
 
-[ -d $tmpdir ] || mkdir -p $tmpdir
-
+declare -a results
 i_todo=$(( ($count/$njobs)+1 ))
 i_done=0
 for (( b=0; b<$i_todo; b++ )); do
@@ -57,8 +55,7 @@ for (( b=0; b<$i_todo; b++ )); do
 	for (( i=0; i<$njobs; i++ )); do
 		j=$(($i_done+$i))
 		[ $j -gt $count ] && break
-		tmpfile=$tmpdir/prob-${j}.t3d
-		./Game ${players[@]} -s $RANDOM < $game_p 2>/dev/null | grep '^score ' > $tmpfile &
+		results[$j]=$(./Game ${players[@]} -s $RANDOM < $game_p 2>/dev/null | grep '^score ' | tail -n 1)
 	done
 	wait
 	i_done=$(($i_done+$i))
@@ -79,12 +76,11 @@ max() {
 	echo -n $imax
 }
 
-for (( i=1; i<=$count; i++ )); do
-	tmpfile=$tmpdir/prob-${i}.t3d
-	results=$(tail -n 1 $tmpfile)
-	if [ -n "$results" ]; then
-		results=${results#* }
-		winner=$(max $results)
+for (( i=0; i<$count; i++ )); do
+	result=${results[$i]}
+	if [ -n "$result" ]; then
+		result=${result#* }
+		winner=$(max $result)
 		[ -n "$winner" ] && wins[$winner]=$(( ${wins[$winner]} + 1 ))
 	fi
 	echo -en "\r${wins[@]}"
