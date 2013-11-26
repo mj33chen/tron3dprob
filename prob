@@ -42,12 +42,10 @@ fi
 
 i=0
 for p in ${players[@]}; do
-	ls AI${p}.o* &>/dev/null || { echo "No such user: $p"; exit 2; }
 	wins[$i]=0
 	i=$(($i+1))
 done
 ls $game_p &>/dev/null || { echo "No such game: $game"; exit 2; }
-
 : > $tmpfile
 
 i_todo=$(( ($count/$njobs)+1 ))
