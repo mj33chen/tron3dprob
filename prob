@@ -31,12 +31,12 @@ while [ -n "$1" ]; do
 done
 game_p=${game}.gam
 
-expected_argc=$(sed -n 's/^nb_players.*\([0-9]\+\)/\1/p' $game_p)
+nplayers=$(sed -n 's/^nb_players.*\([0-9]\+\)/\1/p' $game_p)
 if [ $argc -eq 0 ]; then
 	usage
 	exit 0
-elif [ ! $argc -eq $expected_argc ]; then
-	echo "$expected_argc players required, $argc provided"
+elif [ ! $argc -eq $nplayers ]; then
+	echo "$nplayers players required, $argc provided"
 	exit 2
 fi
 
@@ -52,23 +52,30 @@ ls $game_p &>/dev/null || { echo "No such game: $game"; exit 2; }
 
 i_todo=$(( ($count/$njobs)+1 ))
 i_done=0
+n0=1
+n1=$nplayers
 for (( b=0; b<$i_todo; b++ )); do
 	for (( i=0; i<$njobs; i++ )); do
 		j=$(($i_done+$i))
-		[ $j -gt $count ] && break
-		./Game ${players[@]} -s $RANDOM < $game_p 2>/dev/null | grep '^score ' | tail -n 1 >> $tmpfile &
+		[ $j -ge $count ] && break
+		./Game ${players[@]:$n1} ${players[@]:0:$n1} -s $RANDOM < $game_p 2>/dev/null |\
+			grep '^score ' | tail -n 1 | (read -a result;\
+				echo ${result[@]:$n0} ${result[@]:1:$(($n0-1))} ) >> $tmpfile &
+		n0=$(($n0+1))
+		n1=$(($n1-1))
+		[ $n0 -gt $nplayers ] && { n0=1; n1=$nplayers; }
 	done
-	echo -en "\r$i_done ($((($b*100)/$i_todo))%)"
 	wait
 	i_done=$(($i_done+$i))
+	echo -en "\r$i_done ($(($i_done*100/$count))%)"
 done
 
-echo -e "\r$(($i_done-1)) (100%)"
-echo "Ran $count $game games"
+echo
+echo "Ran $i_done $game games"
 
 max() {
 	imax=0
-	vmax=0
+	vmax=-1
 	i=0
 	for v in $@; do
 		[ $v -eq $vmax ] && return
@@ -80,7 +87,6 @@ max() {
 
 while read result; do
 	if [ -n "$result" ]; then
-		result=${result#* }
 		winner=$(max $result)
 		[ -n "$winner" ] && wins[$winner]=$(( ${wins[$winner]} + 1 ))
 	fi
