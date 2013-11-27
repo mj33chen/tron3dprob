@@ -7,7 +7,7 @@ njobs=4
 game=icosahedron
 count=1000
 
-declare -a players wins
+declare -a players wins total
 argc=0
 
 usage() {
@@ -45,6 +45,7 @@ fi
 i=0
 for p in ${players[@]}; do
 	wins[$i]=0
+	total[$i]=0
 	i=$(($i+1))
 done
 ls $game_p &>/dev/null || { echo "No such game: $game"; exit 2; }
@@ -77,9 +78,7 @@ for (( b=0; b<$i_todo; b++ )); do
 	i_done=$(($i_done+$i))
 	echo -en "\r$i_done ($(($i_done*100/$count))%)"
 done
-
 echo
-echo "Ran $i_done $game games"
 
 max() {
 	imax=0
@@ -93,18 +92,29 @@ max() {
 	echo -n $imax
 }
 
+n=0
 while read result; do
-	if [ -n "$result" ]; then
-		winner=$(max $result)
-		[ -n "$winner" ] && wins[$winner]=$(( ${wins[$winner]} + 1 ))
+	[ -z "$result" ] && continue
+	i=0
+	for r in ${result[@]}; do
+		total[$i]=$((${total[$i]}+$r))
+		i=$(($i+1))
+	done
+	winner=$(max $result)
+	if [ -n "$winner" ]; then
+		wins[$winner]=$(( ${wins[$winner]} + 1 ))
+		n=$(($n+1))
+		echo -en "\r$n successful games with no ties"
 	fi
-	echo -en "\r${wins[@]}"
 done < $tmpfile
-echo
 
-i=0
-for c in ${wins[@]}; do
-	percent=$( bc -l <<< "scale=3; ($c*100) / $count" )
-	echo -e "${players[i]}:\t$percent"
-	i=$(($i+1))
+echo
+echo
+(
+echo -e "Name;;% wins;;# wins;;# points;;~ points"
+for (( i=0; i<$nplayers; i++ )); do
+	p_wins=$( bc -l <<< "scale=3; (${wins[$i]}*100) / $n" )
+	a_points=$( bc -l <<< "scale=2; (${total[$i]}) / $n" )
+	echo -e "${players[i]};;$p_wins;;${wins[$i]};;${total[$i]};;$a_points"
 done
+) | column -t -s ';;'
