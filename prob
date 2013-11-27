@@ -1,11 +1,13 @@
 #!/bin/bash
 
+# Settings
 tmpfile=/tmp/tron.txt
-rotate=true
 
+# Defaults
 njobs=4
 game=icosahedron
 count=1000
+rotate=true
 
 declare -a players wins total
 argc=0
@@ -17,6 +19,7 @@ Options:
     -c N, --count N          Number of games to do
     -g GAME, --game GAME     Name of the game config to use
     -j N, --jobs N           Number of jobs to spawn
+    -s, --static             Do not rotate the order of players
 "
 	exit 0
 }
@@ -26,6 +29,7 @@ while [ -n "$1" ]; do
 		-c|--count) count=$2; shift 2 ;;
 		-g|--game) game=$2; shift 2 ;;
 		-j|--jobs) njobs=$2; shift 2 ;;
+		-s|--static) rotate=false; shift ;;
 		-h|--help) usage; exit 0 ;;
 		-*) echo "Invalid option: $1"; exit 1 ;;
 		*) players[$argc]=$1; let argc++; shift ;;
