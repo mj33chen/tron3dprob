@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 
 tmpfile=/tmp/tron.txt
 rotate=true
@@ -28,7 +28,7 @@ while [ -n "$1" ]; do
 		-j|--jobs) njobs=$2; shift 2 ;;
 		-h|--help) usage; exit 0 ;;
 		-*) echo "Invalid option: $1"; exit 1 ;;
-		*) players[argc]=$1; argc=$(($argc+1)); shift ;;
+		*) players[$argc]=$1; let argc++; shift ;;
 	esac
 done
 game_p=${game}.gam
@@ -46,7 +46,7 @@ i=0
 for p in ${players[@]}; do
 	wins[$i]=0
 	total[$i]=0
-	i=$(($i+1))
+	let i++
 done
 ls $game_p &>/dev/null || { echo "No such game: $game"; exit 2; }
 : > $tmpfile
@@ -65,8 +65,7 @@ for (( b=0; b<$i_todo; b++ )); do
 			./Game ${players[@]:$n1} ${players[@]:0:$n1} -s $RANDOM < $game_p 2>/dev/null |\
 				grep '^score ' | tail -n 1 | (read -a result;\
 					echo ${result[@]:$n0} ${result[@]:1:$(($n0-1))} ) >> $tmpfile &
-			n0=$(($n0+1))
-			n1=$(($n1-1))
+			let n0++ n1--
 			[ $n0 -gt $nplayers ] && { n0=1; n1=$nplayers; }
 		else
 			./Game ${players[@]} -s $RANDOM < $game_p 2>/dev/null |\
@@ -87,7 +86,7 @@ max() {
 	for v in $@; do
 		[ $v -eq $vmax ] && return
 		[ $v -gt $vmax ] && { imax=$i; vmax=$v; }
-		i=$(($i+1))
+		let i++
 	done
 	echo -n $imax
 }
@@ -98,12 +97,12 @@ while read result; do
 	i=0
 	for r in ${result[@]}; do
 		total[$i]=$((${total[$i]}+$r))
-		i=$(($i+1))
+		let i++
 	done
 	winner=$(max $result)
 	if [ -n "$winner" ]; then
 		wins[$winner]=$(( ${wins[$winner]} + 1 ))
-		n=$(($n+1))
+		let n++
 		echo -en "\r$n successful games with no ties"
 	fi
 done < $tmpfile
